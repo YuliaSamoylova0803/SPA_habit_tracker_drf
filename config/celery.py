@@ -19,8 +19,8 @@ app.autodiscover_tasks()
 
 # Самая простая настройка расписания
 app.conf.beat_schedule = {
-    "block-inactive-users-every-day": {
-        "task": "users.tasks.block_inactive_users",
-        "schedule": crontab(hour=3, minute=0),  # Каждый день в 3:00 ночи
+    'check-habits-every-minute': {
+        'task': 'tracking_habits.tasks.check_habits',
+        'schedule': 60.0,  # Каждую минуту
     },
 }
