@@ -20,7 +20,7 @@ app.autodiscover_tasks()
 # Самая простая настройка расписания
 app.conf.beat_schedule = {
     'check-habits-every-minute': {
-        'task': 'tracking_habits.tasks.check_habits',
+        'task': 'tracking_habits.tasks.check_due_habits',
         'schedule': 60.0,  # Каждую минуту
     },
 }
