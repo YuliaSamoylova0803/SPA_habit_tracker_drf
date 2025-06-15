@@ -182,6 +182,16 @@ class Habit(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
+    def get_reminder_message(self):
+        """Генерация текста напоминания"""
+        return (
+            f"⏰ <b>Напоминание о привычке!</b>\n\n"
+            f"<b>Действие:</b> {self.action}\n"
+            f"<b>Место:</b> {self.place}\n"
+            f"<b>Время выполнения:</b> {self.duration} сек.\n"
+            f"<b>Периодичность:</b> {self.get_periodicity_display()}"
+        )
+
     class Meta:
         verbose_name = "привычка"
         verbose_name_plural = "привычки"
