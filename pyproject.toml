@@ -21,6 +21,8 @@ celery = "^5.5.3"
 eventlet = "^0.40.0"
 redis = "^6.2.0"
 django-celery-beat = "^2.8.1"
+requests = "^2.32.4"
+python-telegram-bot = "^22.1"
 
 
 [tool.poetry.group.lint.dependencies]
