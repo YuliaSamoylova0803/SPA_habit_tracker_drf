@@ -27,7 +27,7 @@ def send_habit_reminder(self, habit_id):
             f"<b>Периодичность:</b> {habit.get_periodicity_display()}"
         )
 
-        if send_telegram_message(habit.user.tg_chat_id, message)
+        if send_telegram_message(habit.user.tg_chat_id, message):
             logger.info(f"Напоминание для привычки {habit_id} отправлено")
             return True
         else:
