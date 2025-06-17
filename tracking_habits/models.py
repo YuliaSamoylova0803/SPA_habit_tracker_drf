@@ -192,6 +192,11 @@ class Habit(models.Model):
             f"<b>Периодичность:</b> {self.get_periodicity_display()}"
         )
 
+    def mark_as_completed(self):
+        """Отмечает привычку как выполненную (обновляет last_completed)."""
+        self.last_completed = timezone.now().date()
+        self.save()
+
     class Meta:
         verbose_name = "привычка"
         verbose_name_plural = "привычки"
