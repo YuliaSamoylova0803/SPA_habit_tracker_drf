@@ -16,7 +16,7 @@ router = DefaultRouter()
 router.register(r"users", UserProfileViewSet, basename="user")
 
 urlpatterns = [
-    path("users/me", UserProfileViewSet.as_view({"get": "me"}), name="user-me"),
+    path("users/me/", UserProfileViewSet.as_view({"get": "me"}), name="user-me"),
     path(
         "register/",
         UserCreateAPIView.as_view(permission_classes=(AllowAny,)),
