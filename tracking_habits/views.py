@@ -15,10 +15,12 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Возвращает только привычки текущего пользователя"""
+        if getattr(self, 'swagger_fake_view', False):
+            # Для генерации схемы Swagger возвращаем пустой queryset
+            return Habit.objects.none()
+
         if self.action == "public":
-            return Habit.objects.filter(
-                is_public=True
-            )  # Исправлено is_puplic на is_public
+            return Habit.objects.filter(is_public=True)
         return Habit.objects.filter(user=self.request.user)
 
     @action(detail=False, methods=["get"])
@@ -33,5 +35,4 @@ class HabitViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        # Автоматически привязываем привычку к текущему пользователю
         serializer.save(user=self.request.user)
