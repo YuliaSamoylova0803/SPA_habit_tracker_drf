@@ -4,6 +4,7 @@ from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
 
+
 def send_telegram_message(chat_id, message):
     """
     Отправка сообщения в Telegram с обработкой ошибок.
@@ -15,12 +16,12 @@ def send_telegram_message(chat_id, message):
     Returns:
         bool: True если сообщение отправлено успешно, False в случае ошибки
     """
-    url = f'https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage'
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_TOKEN}/sendMessage"
     params = {
-        'chat_id': chat_id,
-        'text': message,
-        'parse_mode': 'HTML',
-        'disable_web_page_preview': True,
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
     }
     try:
         response = requests.post(url, json=params, timeout=10)

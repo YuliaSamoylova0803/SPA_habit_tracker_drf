@@ -1,16 +1,20 @@
 from rest_framework import viewsets
 from rest_framework.generics import CreateAPIView
-from django.shortcuts import render
 from .models import User
-from .serializers import UserSerializer, UserProfileSerializer, OtherUserProfileSerializer
+from .serializers import (
+    UserSerializer,
+    UserProfileSerializer,
+    OtherUserProfileSerializer,
+)
 from rest_framework.response import Response
 from rest_framework.decorators import action
+
 
 # Create your views here.
 class UserCreateAPIView(CreateAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    #permission_classes = (AllowAny,)
+    # permission_classes = (AllowAny,)
 
     def perform_create(self, serializer):
         user = serializer.save(is_active=True)
@@ -21,7 +25,7 @@ class UserCreateAPIView(CreateAPIView):
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().prefetch_related("payments")
     serializer_class = UserProfileSerializer
-    #permission_classes = [IsOwnerOrStaff]
+    # permission_classes = [IsOwnerOrStaff]
 
     def get_object(self):
         """Возвращает текущего пользователя"""

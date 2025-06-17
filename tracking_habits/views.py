@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,7 +16,9 @@ class HabitViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Возвращает только привычки текущего пользователя"""
         if self.action == "public":
-            return Habit.objects.filter(is_public=True)  # Исправлено is_puplic на is_public
+            return Habit.objects.filter(
+                is_public=True
+            )  # Исправлено is_puplic на is_public
         return Habit.objects.filter(user=self.request.user)
 
     @action(detail=False, methods=["get"])

@@ -41,20 +41,26 @@ class Habit(models.Model):
         on_delete=models.CASCADE,
         help_text="Пользователь, создавший привычку",
         related_name="habits",
-        verbose_name="Пользователь"
+        verbose_name="Пользователь",
     )
     place = models.CharField(
         max_length=50,
         verbose_name="Место выполнения",
-        help_text="Место, где будет выполняться привычка"
+        help_text="Место, где будет выполняться привычка",
     )
-    time = models.TimeField(verbose_name="Время выполнения", help_text="В какое время выполнять привычку")
+    time = models.TimeField(
+        verbose_name="Время выполнения", help_text="В какое время выполнять привычку"
+    )
     action = models.CharField(
         max_length=100,
         verbose_name="Действие",
-        help_text="Конкретное действие, которое нужно выполнить"
+        help_text="Конкретное действие, которое нужно выполнить",
     )
-    is_pleasant = models.BooleanField(default=False, verbose_name="Приятная привычка", help_text="Является ли привычка приятной (наградой)")
+    is_pleasant = models.BooleanField(
+        default=False,
+        verbose_name="Приятная привычка",
+        help_text="Является ли привычка приятной (наградой)",
+    )
     linked_habit = models.ForeignKey(
         "self",  # Ссылка на эту же модель Habit
         on_delete=models.SET_NULL,  # При удалении связанной привычки ставит NULL
@@ -62,7 +68,7 @@ class Habit(models.Model):
         blank=True,  # Разрешает пустое значение в админке/формах
         verbose_name="Связанная привычка",  # Человекочитаемое название
         help_text="Приятная привычка, которая будет наградой",
-        related_name="main_habit"  # Имя обратной связи
+        related_name="main_habit",  # Имя обратной связи
     )
     periodicity = models.PositiveSmallIntegerField(
         choices=PERIOD_CHOICES,
@@ -71,41 +77,37 @@ class Habit(models.Model):
         help_text="Как часто выполнять привычку (в днях)",
         validators=[
             MinValueValidator(1, message="Минимум 1 день"),
-            MaxValueValidator(30, message="Максимум 30 дней")
-        ]
+            MaxValueValidator(30, message="Максимум 30 дней"),
+        ],
     )
     reward = models.CharField(
         max_length=255,
         blank=True,
         null=True,
         verbose_name="Вознаграждение",
-        help_text="Чем себя наградить после выполнения (например, 'кофе', '5 минут соцсетей')"
+        help_text="Чем себя наградить после выполнения (например, 'кофе', '5 минут соцсетей')",
     )
     duration = models.PositiveIntegerField(
         verbose_name="Длительность",
         help_text="Время на выполнение в секундах",
-        validators=[
-            MinValueValidator(1),
-            MaxValueValidator(120)
-        ],
+        validators=[MinValueValidator(1), MaxValueValidator(120)],
         default=60,
     )
     is_public = models.BooleanField(
         default=False,
         verbose_name="Публичная",
-        help_text="Видна ли привычка другим пользователям"
+        help_text="Видна ли привычка другим пользователям",
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     last_completed = models.DateField(
         null=True,
         blank=True,
         verbose_name="Последнее выполнение",
-        help_text="Когда привычка была выполнена в последний раз"
+        help_text="Когда привычка была выполнена в последний раз",
     )
 
     def __str__(self):
         return f"{self.action} в {self.time} ({self.place})"
-
 
     def clean(self):
         """
@@ -139,7 +141,9 @@ class Habit(models.Model):
                 )
             if self.linked_habit:
                 raise ValidationError(
-                    {"linked_habit": "У приятной привычки не может быть связанной привычки."}
+                    {
+                        "linked_habit": "У приятной привычки не может быть связанной привычки."
+                    }
                 )
 
         # Валидация полезных привычек
@@ -156,7 +160,9 @@ class Habit(models.Model):
         # Проверка связанной привычки
         if self.linked_habit and not self.linked_habit.is_pleasant:
             raise ValidationError(
-                {"linked_habit": "В связанные привычки могут попадать только привычки с признаком приятной привычки."}
+                {
+                    "linked_habit": "В связанные привычки могут попадать только привычки с признаком приятной привычки"
+                }
             )
 
         # Проверка на циклические ссылки

@@ -5,7 +5,7 @@ from .models import Habit
 class HabitSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
-        if data.get('reward') and data.get('linked_habit'):
+        if data.get("reward") and data.get("linked_habit"):
             raise serializers.ValidationError(
                 "Нельзя одновременно указывать и вознаграждение, и связанную привычку."
             )

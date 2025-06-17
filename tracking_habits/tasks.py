@@ -1,11 +1,11 @@
 from celery import shared_task
 from django.utils import timezone
-from datetime import timedelta
 from tracking_habits.models import Habit
 from .services import send_telegram_message
-from celery.utils.log import get_task_logger, logger
+from celery.utils.log import get_task_logger
 
 logger = get_task_logger(__name__)
+
 
 @shared_task(bind=True, max_retries=3)
 def send_habit_reminder(self, habit_id):
@@ -41,6 +41,7 @@ def send_habit_reminder(self, habit_id):
         logger.error(f"Неожиданная ошибка: {str(e)}")
         raise self.retry(exc=e, countdown=60)
 
+
 @shared_task
 def check_due_habits():
     """Проверка привычек, для которых нужно отправить напоминание.
@@ -50,8 +51,7 @@ def check_due_habits():
     current_time = now.time()
 
     habits = Habit.objects.filter(
-        time__hour=current_time.hour,
-        time__minute=current_time.minute
+        time__hour=current_time.hour, time__minute=current_time.minute
     ).select_related("user")
 
     logger.info(f"Найдено {habits.count()} привычек для напоминания")

@@ -1,7 +1,7 @@
 import os
 
 from celery import Celery
-from celery.schedules import crontab
+
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -19,8 +19,8 @@ app.autodiscover_tasks()
 
 # Самая простая настройка расписания
 app.conf.beat_schedule = {
-    'check-habits-every-minute': {
-        'task': 'tracking_habits.tasks.check_due_habits',
-        'schedule': 60.0,  # Каждую минуту
+    "check-habits-every-minute": {
+        "task": "tracking_habits.tasks.check_due_habits",
+        "schedule": 60.0,  # Каждую минуту
     },
 }
