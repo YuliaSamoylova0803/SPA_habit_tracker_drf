@@ -30,3 +30,7 @@ class HabitViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = PublicHabitSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        # Автоматически привязываем привычку к текущему пользователю
+        serializer.save(user=self.request.user)
