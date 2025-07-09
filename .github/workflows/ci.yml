@@ -30,9 +30,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-              .venv
-              ~/.cache/pypoetry
-            key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
+            .venv
+            ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
 
       - name: Install dependencies
         run: |
