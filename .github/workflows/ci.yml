@@ -2,8 +2,9 @@ name: Django CI/CD Pipeline with Poetry
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, feature/course_9.0]  # Добавьте свои ветки
   pull_request:
+    branches: [main]
 
 jobs:
   lint:
