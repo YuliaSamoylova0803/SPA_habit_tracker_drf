@@ -6,7 +6,7 @@ from tracking_habits.models import Habit
 from datetime import time, timedelta
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from datetime import date
+
 
 User = get_user_model()
 
