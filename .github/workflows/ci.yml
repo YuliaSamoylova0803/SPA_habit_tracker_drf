@@ -1,6 +1,9 @@
-name: Django CI
+name: Django CI/CD Pipeline with Poetry
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
 
 jobs:
   lint:
@@ -9,18 +12,30 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
 
+      - name: Load cached venv
+        id: cached-poetry-deps
+        uses: actions/cache@v3
+        with:
+          path: |
+            .venv
+             ~/.cache/pypoetry
+          key: venv-${{ hashFiles('pyproject.toml') }}
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install flake8
+          poetry install --no-root
+          poetry run pip install flake8 black isort
 
-      - name: Run Flake8
-        run: flake8 .
+      - name: Run linting
+        run: |
+          poetry run flake8 .
+          poetry run black --check .
+          poetry run isort --check .
 
   test:
     needs: lint
@@ -40,23 +55,26 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
           python-version: '3.13'
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "export PATH=\"$HOME/.local/bin:$PATH\"" >> $GITHUB_ENV
+        uses: snok/install-poetry@v1
 
       - name: Install dependencies
         run: |
-          poetry install --no-root
+          poetry install --with dev
           poetry run pip install psycopg2-binary
 
       - name: Prepare directories
@@ -87,7 +105,7 @@ jobs:
         run: |
           poetry run python manage.py test
 
-  build:
+  docker-build:
     needs: test
     runs-on: ubuntu-latest
 
@@ -95,40 +113,48 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
-        run: |
-          # Создаем необходимые файлы/папки если их нет
-          mkdir -p media static
-          touch README.md
-          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }} .
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:latest
 
       - name: Push Docker image to Docker Hub
         run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
 
   deploy:
-    needs: build
+    needs: docker-build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Set up SSH
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Install up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Deploy with Nginx proxy
+      - name: Deploy to server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          # Останавливаем старый контейнер
-          docker rm -f my_app || true
-
-          # Скачиваем новый образ
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
-
-          # Запускаем контейнер на порту 8000 (для Nginx)
-          docker run -d --name my_app -p 8000:8000 ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
-
-          # Проверяем конфиг Nginx
-          sudo nginx -t && sudo systemctl restart nginx
+          cd /path/to/project
+          git pull origin main
+          docker-compose down
+          docker-compose pull
+          docker-compose up -d --build
+          docker-compose exec web python manage.py collectstatic --no-input
+          docker-compose exec web python manage.py migrate
           EOF
