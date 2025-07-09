@@ -1,0 +1,9 @@
+# Git
+.git
+.gitignore
+.env
+*.pyc
+__pycache__
+media
+static
+db.sqlite3
