@@ -1,13 +1,11 @@
 from rest_framework import viewsets
-from rest_framework.generics import CreateAPIView
-from .models import User
-from .serializers import (
-    UserSerializer,
-    UserProfileSerializer,
-    OtherUserProfileSerializer,
-)
-from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.generics import CreateAPIView
+from rest_framework.response import Response
+
+from .models import User
+from .serializers import (OtherUserProfileSerializer, UserProfileSerializer,
+                          UserSerializer)
 
 
 # Create your views here.

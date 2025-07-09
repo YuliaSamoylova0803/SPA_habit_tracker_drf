@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -15,7 +15,7 @@ class HabitViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Возвращает только привычки текущего пользователя"""
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             # Для генерации схемы Swagger возвращаем пустой queryset
             return Habit.objects.none()
 

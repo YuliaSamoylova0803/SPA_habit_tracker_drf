@@ -1,8 +1,10 @@
 from celery import shared_task
-from django.utils import timezone
-from tracking_habits.models import Habit
-from .services import send_telegram_message
 from celery.utils.log import get_task_logger
+from django.utils import timezone
+
+from tracking_habits.models import Habit
+
+from .services import send_telegram_message
 
 logger = get_task_logger(__name__)
 
