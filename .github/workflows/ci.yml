@@ -26,11 +26,18 @@ jobs:
       - name: Configure Poetry
         run: poetry config virtualenvs.create false
 
-      - name: Install dependencies
-        run: poetry install --no-root
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v3
+        with:
+          path: |
+              .venv
+              ~/.cache/pypoetry
+            key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
 
-      - name: Install linting tools
-        run: poetry add --dev flake8 black isort
+      - name: Install dependencies
+        run: |
+          poetry install --no-root
+          poetry install --only dev
 
       - name: Run linting
         run: |
