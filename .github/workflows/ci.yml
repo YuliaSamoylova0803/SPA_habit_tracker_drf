@@ -7,11 +7,31 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  setup:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: '1.8.2'  # Фиксируем версию для стабильности
+
+      - name: Generate lock file
+        run: |
+          poetry lock --no-update
+          git diff --exit-code poetry.lock || (echo "Poetry.lock is not synced with pyproject.toml" && exit 1)
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Set up Python 3.13
         uses: actions/setup-python@v4
@@ -23,10 +43,7 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Configure Poetry
-        run: poetry config virtualenvs.create false
-
-      - name: Cache Poetry virtualenv
+      - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: |
@@ -36,15 +53,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --no-root
-          poetry install --only dev
+          poetry config virtualenvs.create true
+          poetry install --no-interaction --no-root
 
       - name: Run linting
         run: |
-          poetry run flake8 . --count --show-source --statistics
-          # Или для продолжения при ошибках (только для PR):
-          poetry run flake8 . || echo "Linting failed, but continuing for PR"
-        continue-on-error: ${{ github.event_name == 'pull_request' }}
+          poetry run flake8 .
+          poetry run black --check .
+          poetry run isort --check .
 
   test:
     needs: lint
