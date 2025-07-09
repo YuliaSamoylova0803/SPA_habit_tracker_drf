@@ -18,19 +18,19 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Load cached venv
-        id: cached-poetry-deps
-        uses: actions/cache@v3
-        with:
-          path: |
-            .venv
-             ~/.cache/pypoetry
-          key: venv-${{ hashFiles('pyproject.toml') }}
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure Poetry
+        run: poetry config virtualenvs.create false
 
       - name: Install dependencies
-        run: |
-          poetry install --no-root
-          poetry run pip install flake8 black isort
+        run: poetry install --no-root
+
+      - name: Install linting tools
+        run: poetry add --dev flake8 black isort
 
       - name: Run linting
         run: |
