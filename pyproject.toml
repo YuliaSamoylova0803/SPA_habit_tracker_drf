@@ -24,6 +24,7 @@ django-celery-beat = "^2.8.1"
 requests = "^2.32.4"
 python-telegram-bot = "^22.1"
 django-cors-headers = "^4.7.0"
+gunicorn = "^23.0.0"
 
 
 [tool.poetry.group.lint.dependencies]
