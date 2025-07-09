@@ -56,25 +56,22 @@ jobs:
           poetry config virtualenvs.create true
           poetry install --no-interaction --no-root
 
-      - name: Auto-format code
-        run: poetry run black .
-
-      - name: Fix and verify imports
+      - name: Apply code formatting
         run: |
-          # Автоисправление сортировки импортов
           poetry run isort .
-            
-          # Проверка, были ли изменения
-          git diff --exit-code || {
-            echo "::error::Импорты требуют форматирования. Запустите 'isort .' локально"
+          poetry run black .
+
+      - name: Verify formatting
+        run: |
+          git diff --exit-code || (
+            echo "::error::Файлы требуют форматирования. Запустите 'isort . && black .' локально"
+            git diff
             exit 1
-          }
+          )
 
       - name: Run linting
         run: |
           poetry run flake8 .
-          poetry run black --check . 
-          poetry run isort --check .
 
   test:
     needs: lint
