@@ -4,11 +4,8 @@ from rest_framework.generics import CreateAPIView
 from rest_framework.response import Response
 
 from .models import User
-from .serializers import (
-    OtherUserProfileSerializer,
-    UserProfileSerializer,
-    UserSerializer,
-)
+from .serializers import (OtherUserProfileSerializer, UserProfileSerializer,
+                          UserSerializer)
 
 
 # Create your views here.
