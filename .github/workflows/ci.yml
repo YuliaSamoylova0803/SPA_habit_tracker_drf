@@ -54,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry config virtualenvs.create true
-          poetry install --no-interaction --no-root
+          poetry install --no-root --no-interaction
 
       - name: Apply code formatting
         run: |
