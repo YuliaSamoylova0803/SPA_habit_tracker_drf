@@ -59,6 +59,17 @@ jobs:
       - name: Auto-format code
         run: poetry run black .
 
+      - name: Fix and verify imports
+        run: |
+          # Автоисправление сортировки импортов
+          poetry run isort .
+            
+          # Проверка, были ли изменения
+          git diff --exit-code || {
+            echo "::error::Импорты требуют форматирования. Запустите 'isort .' локально"
+            exit 1
+          }
+
       - name: Run linting
         run: |
           poetry run flake8 .
