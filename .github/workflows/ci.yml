@@ -164,9 +164,6 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:latest
 
-      - name: Push Docker image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
-
   deploy:
     needs: docker-build
     runs-on: ubuntu-latest
