@@ -6,10 +6,6 @@ on:  # ← Этот раздел должен быть сразу после nam
   pull_request:
     branches: [main]
 
-env:
-  PYTHON_VERSION: '3.13'
-  DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/my_app
-
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -36,28 +32,28 @@ jobs:
         with:
           python-version: '3.13'  # Рекомендую стабильную версию
 
-      # 2. Установка Poetry (исправленный способ)
-      - name: Install Poetry
-        run: |
-          pip install poetry==1.8.2
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      # 3. Настройка Poetry
-      - name: Configure Poetry
-        run: |
-          poetry config virtualenvs.create false
-
       # 4. Установка зависимостей
       - name: Install dependencies
         run: |
+          poetry config virtualenvs.create true
           poetry install --no-root --no-interaction
 
-      # 5. Линтинг
+      - name: Apply code formatting
+        run: |
+          poetry run isort .
+          poetry run black .
+
+      - name: Verify formatting
+        run: |
+          git diff --exit-code || (
+            echo "::error::Файлы требуют форматирования. Запустите 'isort . && black .' локально"
+            git diff
+            exit 1
+          )
+
       - name: Run linting
         run: |
           poetry run flake8 .
-          poetry run black --check .
-          poetry run isort --check .
 
   test:
     needs: lint
