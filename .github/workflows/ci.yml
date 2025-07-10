@@ -35,6 +35,17 @@ jobs:
         with:
           python-version: '3.13'  # Рекомендую стабильную версию
 
+      # 2. Установка Poetry (исправленный способ)
+      - name: Install Poetry
+        run: |
+          pip install poetry==1.8.2
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # 3. Настройка Poetry
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create false
+
       # 4. Установка зависимостей
       - name: Install dependencies
         run: |
@@ -52,7 +63,7 @@ jobs:
             echo "::error::Файлы требуют форматирования. Запустите 'isort . && black .' локально"
             git diff
             exit 1
-            )
+          )
 
       - name: Run linting
         run: |
