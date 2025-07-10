@@ -25,25 +25,38 @@ jobs:
       - run: poetry lock --no-update
 
   lint:
-    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+
+      # 1. Установка Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.local/bin
-          key: ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-poetry-${{ hashFiles('pyproject.toml') }}
-      - run: poetry install --no-root --no-interaction
-      - run: |
-          poetry run isort .
-          poetry run black .
-          git diff --exit-code || (echo "::error::Run 'isort . && black .' locally"; exit 1)
-      - run: poetry run flake8 .
+          python-version: '3.10'  # Рекомендую стабильную версию
+
+      # 2. Установка Poetry (исправленный способ)
+      - name: Install Poetry
+        run: |
+          pip install poetry==1.8.2
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # 3. Настройка Poetry
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create false
+
+      # 4. Установка зависимостей
+      - name: Install dependencies
+        run: |
+          poetry install --no-root --no-interaction
+
+      # 5. Линтинг
+      - name: Run linting
+        run: |
+          poetry run flake8 .
+          poetry run black --check .
+          poetry run isort --check .
 
   test:
     needs: lint
