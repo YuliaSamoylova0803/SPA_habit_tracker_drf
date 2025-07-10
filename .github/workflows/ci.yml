@@ -175,36 +175,25 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      # Однократное добавление fingerprint (лучше использовать ssh-keyscan)
-      - name: Configure SSH
+      # Создаем .env файл с переменными
+      - name: Create .env file
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          echo "NAME=${{ secrets.DB_NAME }}" > .env
+          echo "PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "HOST=${{ secrets.DB_HOST}}" >> .env
+          echo "PORT=${{ secrets.DB_PORT}}" >> .env
+          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY}}" >> .env
 
-      # Проверка подключения
-      - name: Verify SSH connection
-        run: ssh -T ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} echo "SSH connection successful"
-
-      # Основной деплой с проверками
-      - name: Deploy application
+      # Копируем файлы на сервер
+      - name: Deploy files
         run: |
-          # Проверка существования docker-compose.yml
-          if [ ! -f "docker-compose.yml" ]; then
-            echo "Error: docker-compose.yml not found!"
-            ls -la
-            exit 1
-          fi
+          scp .env docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
 
-          # Копирование файлов
-          scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
-
-          # Выполнение команд на сервере
+      # Запускаем приложение
+      - name: Start containers
+        run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            set -e
-            cd ${{ secrets.DEPLOY_PATH }} || { echo 'Error: Directory not found'; exit 1; }
-            [ -f docker-compose.yml ] || { echo 'Error: docker-compose.yml missing on server'; exit 1; }
+            cd ${{ secrets.DEPLOY_PATH }}
             docker-compose down
             docker-compose pull
             docker-compose up -d --build
