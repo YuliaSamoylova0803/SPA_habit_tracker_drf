@@ -212,10 +212,23 @@ jobs:
           "
 
       # Запускаем сервисы
-      - name: Start containers
+      - name: Deploy application
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
             cd ${{ secrets.DEPLOY_PATH }}
-            docker-compose down
+
+            # Принудительно останавливаем все контейнеры
+            docker-compose down || true
+
+            # Убиваем процессы, занимающие порт 8000
+            sudo lsof -ti :8000 | xargs -r sudo kill -9
+
+            # Чистим неиспользуемые ресурсы
+            docker system prune -f
+
+            # Запускаем приложение
             docker-compose up -d --build
+
+            # Проверяем работу
+            docker-compose ps
           "
