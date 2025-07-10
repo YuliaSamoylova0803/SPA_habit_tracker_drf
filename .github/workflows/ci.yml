@@ -177,15 +177,20 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Verify server connection
-        run: ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "whoami"
-
       - name: Deploy application
         run: |
-            scp ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
-            ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-              cd ${{ secrets.DEPLOY_PATH }}
-              docker-compose down
-              docker-compose pull
-              docker-compose up -d --build
+          # Копируем только docker-compose.yml
+          scp ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+            
+          # Запускаем с переменными из secrets
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd ${{ secrets.DEPLOY_PATH }} || exit 1
+            docker-compose down
+            docker-compose pull
+            docker-compose run -e NAME=${{ secrets.DB_NAME }} \
+                              -e PASSWORD=${{ secrets.DB_PASSWORD }} \
+                              -e HOST=${{ secrets.DB_HOST }} \
+                              -e PORT=${{ secrets.DB_PORT }} \
+                              -e SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
+                              up -d --build
             "
