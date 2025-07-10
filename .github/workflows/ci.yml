@@ -1,77 +1,43 @@
 name: Django CI/CD Pipeline with Poetry
 
-on:
-  push:
-    branches: [main, feature/course_9.0]  # Добавьте свои ветки
-  pull_request:
-    branches: [main]
+env:
+  PYTHON_VERSION: '3.13'
+  DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/my_app
 
 jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: snok/install-poetry@v1
         with:
-          version: '1.8.2'  # Фиксируем версию для стабильности
-
-      - name: Generate lock file
-        run: |
-          poetry lock --no-update
-          git diff --exit-code poetry.lock || (echo "Poetry.lock is not synced with pyproject.toml" && exit 1)
+          version: '1.8.2'
+          virtualenvs-create: false
+      - run: poetry lock --no-update
 
   lint:
     needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.13'
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/cache@v3
         with:
           path: |
-            .venv
             ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
-
-      - name: Install dependencies
-        run: |
-          poetry config virtualenvs.create true
-          poetry install --no-root --no-interaction
-
-      - name: Apply code formatting
-        run: |
+            ~/.local/bin
+          key: ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-poetry-${{ hashFiles('pyproject.toml') }}
+      - run: poetry install --no-root --no-interaction
+      - run: |
           poetry run isort .
           poetry run black .
-
-      - name: Verify formatting
-        run: |
-          git diff --exit-code || (
-            echo "::error::Файлы требуют форматирования. Запустите 'isort . && black .' локально"
-            git diff
-            exit 1
-          )
-
-      - name: Run linting
-        run: |
-          poetry run flake8 .
+          git diff --exit-code || (echo "::error::Run 'isort . && black .' locally"; exit 1)
+      - run: poetry run flake8 .
 
   test:
     needs: lint
@@ -107,10 +73,11 @@ jobs:
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
-
+        with:
+          virtualenvs-create: false
       - name: Install dependencies
         run: |
-          poetry install --with dev
+          poetry install --no-interaction --no-root
           poetry run pip install psycopg2-binary
 
       - name: Prepare directories
@@ -175,22 +142,14 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Install up SSH
-        uses: webfactory/ssh-agent@v0.9.0
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
-
-      - name: Deploy to server
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-          cd /path/to/project
-          git pull origin main
-          docker-compose down
-          docker-compose pull
-          docker-compose up -d --build
-          docker-compose exec web python manage.py collectstatic --no-input
-          docker-compose exec web python manage.py migrate
-          EOF
+      - run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd /path/to/project
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d --build
+          "
