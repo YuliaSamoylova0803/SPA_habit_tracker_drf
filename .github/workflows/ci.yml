@@ -167,22 +167,32 @@ jobs:
   deploy:
     needs: docker-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/course_9.0'
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
+
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      - name: Add server to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Verify server connection
+        run: ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "whoami"
 
-      - name: Deploy to server
+      - name: Check deployment directory
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd ${{ secrets.DEPLOY_PATH }} || exit 1
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            echo 'Checking directory: ${{ secrets.DEPLOY_PATH }}'
+            ls -la ${{ secrets.DEPLOY_PATH }} || echo 'Directory does not exist!'
+          "
+
+      - name: Deploy application
+        run: |
+          # Сначала копируем docker-compose.yml на сервер
+          scp -o StrictHostKeyChecking=no ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+
+          # Затем выполняем deployment
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd ${{ secrets.DEPLOY_PATH }}
             docker-compose down
             docker-compose pull
             docker-compose up -d --build
