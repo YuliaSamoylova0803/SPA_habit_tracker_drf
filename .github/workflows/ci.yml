@@ -170,44 +170,52 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 1. Настройка SSH
+      # Настройка SSH
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      # 2. Проверка структуры файлов
-      - name: Verify project structure
+      # Создаем .env файл
+      - name: Create .env file
         run: |
-          echo "Current directory structure:"
-          ls -R
-          [ -f "docker-compose.yml" ] || { echo "Error: docker-compose.yml not found"; exit 1; }
-          [ -f "backend/Dockerfile" ] || { echo "Error: backend/Dockerfile not found"; exit 1; }
+          cat << EOF > .env
+          NAME=${{ secrets.DB_NAME }}
+          USER=${{ secrets.DB_USER }}
+          PASSWORD=${{ secrets.DB_PASSWORD }}
+          SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          EOF
 
-      # 3. Копирование ВСЕХ необходимых файлов
+      # Копируем файлы на сервер
       - name: Deploy files
         run: |
           # Создаем архив со всеми файлами
           tar czf deploy.tar.gz \
+            Dockerfile \
             docker-compose.yml \
             .env \
-            backend/Dockerfile \
-            backend/requirements.txt \
-            # Добавьте другие необходимые файлы
+            nginx/ \
+            manage.py \
+            pyproject.toml \
+            poetry.lock \
+            config/ \
+            tracking_habits/ \
+            users/
 
-          # Копируем архив на сервер
+          # Копируем на сервер
           scp -o StrictHostKeyChecking=no deploy.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
 
           # Распаковываем на сервере
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd ${{ secrets.DEPLOY_PATH }} || exit 1
+            cd ${{ secrets.DEPLOY_PATH }}
             tar xzf deploy.tar.gz
             rm deploy.tar.gz
           "
 
-      # 4. Запуск сервисов с BuildKit
+      # Запускаем сервисы
       - name: Start containers
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
             cd ${{ secrets.DEPLOY_PATH }}
-            DOCKER_BUILDKIT=1 docker-compose up -d --build
+            docker-compose down
+            docker-compose up -d --build
           "
