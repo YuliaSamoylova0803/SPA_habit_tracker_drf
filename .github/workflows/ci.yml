@@ -1,5 +1,11 @@
 name: Django CI/CD Pipeline with Poetry
 
+on:  # ← Этот раздел должен быть сразу после name
+  push:
+    branches: [main, feature/course_9.0]
+  pull_request:
+    branches: [main]
+
 env:
   PYTHON_VERSION: '3.13'
   DOCKER_IMAGE: ${{ secrets.DOCKER_HUB_USERNAME }}/my_app
