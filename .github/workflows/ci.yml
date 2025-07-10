@@ -170,27 +170,42 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Настройка SSH-агента с ключом
+      # Настройка SSH
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      # Проверка подключения (debug)
-      - name: Test SSH connection
-        run: ssh -vT ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} exit
-
-      # Добавление сервера в known_hosts
-      - name: Add server fingerprint
+      # Однократное добавление fingerprint (лучше использовать ssh-keyscan)
+      - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      # Основной деплой
-      - name: Deploy
+      # Проверка подключения
+      - name: Verify SSH connection
+        run: ssh -T ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} echo "SSH connection successful"
+
+      # Основной деплой с проверками
+      - name: Deploy application
         run: |
-          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+          # Проверка существования docker-compose.yml
+          if [ ! -f "docker-compose.yml" ]; then
+            echo "Error: docker-compose.yml not found!"
+            ls -la
+            exit 1
+          fi
+
+          # Копирование файлов
+          scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+
+          # Выполнение команд на сервере
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd ${{ secrets.DEPLOY_PATH }}
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }} || { echo 'Error: Directory not found'; exit 1; }
+            [ -f docker-compose.yml ] || { echo 'Error: docker-compose.yml missing on server'; exit 1; }
+            docker-compose down
+            docker-compose pull
             docker-compose up -d --build
           "
