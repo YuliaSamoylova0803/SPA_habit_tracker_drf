@@ -172,25 +172,16 @@ jobs:
        github.ref == 'refs/heads/feature/course_9.0') &&
       needs.docker-build.result == 'success'
     steps:
-      - uses: actions/checkout@v3
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}
-
-      - name: Deploy application
+      - name: Add server to known_hosts
         run: |
-          # Копируем только docker-compose.yml
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy
+        run: |
           scp ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
-            
-          # Запускаем с переменными из secrets
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd ${{ secrets.DEPLOY_PATH }} || exit 1
-            docker-compose down
-            docker-compose pull
-            docker-compose run -e NAME=${{ secrets.DB_NAME }} \
-                              -e PASSWORD=${{ secrets.DB_PASSWORD }} \
-                              -e HOST=${{ secrets.DB_HOST }} \
-                              -e PORT=${{ secrets.DB_PORT }} \
-                              -e SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }} \
-                              up -d --build
-            "
+            cd ${{ secrets.DEPLOY_PATH }}
+            docker-compose up -d --build
+          "
