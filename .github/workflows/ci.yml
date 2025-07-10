@@ -172,15 +172,21 @@ jobs:
        github.ref == 'refs/heads/feature/course_9.0') &&
       needs.docker-build.result == 'success'
     steps:
-      - name: Add server to known_hosts
+      - uses: actions/checkout@v3
+
+      - name: Verify docker-compose exists
+        run: |
+          ls -la
+          [ -f "docker-compose.yml" ] || { echo "Error: docker-compose.yml not found!"; exit 1; }
+
+      - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy
         run: |
-          scp ./docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
             cd ${{ secrets.DEPLOY_PATH }}
             docker-compose up -d --build
