@@ -170,30 +170,46 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Настройка SSH
+      # 1. Настройка SSH-агента с ключом
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY }}
 
-      # Создаем .env файл с переменными
-      - name: Create .env file
+      # 2. Принудительное добавление сервера в known_hosts
+      - name: Configure SSH known hosts
         run: |
-          echo "NAME=${{ secrets.DB_NAME }}" > .env
-          echo "PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-          echo "HOST=${{ secrets.DB_HOST}}" >> .env
-          echo "PORT=${{ secrets.DB_PORT}}" >> .env
-          echo "SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY}}" >> .env
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SERVER_IP }} ssh-ed25519 SHA256:m5w+3ccpXnDmT9XCT10tFDrwIJLwe02HYZ665iOrf4w" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-      # Копируем файлы на сервер
-      - name: Deploy files
+      # 3. Создание .env файла
+      - name: Create environment file
         run: |
-          scp .env docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+          cat << EOF > .env
+          NAME=${{ secrets.DB_NAME }}
+          PASSWORD=${{ secrets.DB_PASSWORD }}
+          HOST=${{ secrets.DB_HOST }}
+          PORT=${{ secrets.DB_PORT }}
+          SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          EOF
 
-      # Запускаем приложение
-      - name: Start containers
+      # 4. Деплой с проверками
+      - name: Deploy application
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
-            cd ${{ secrets.DEPLOY_PATH }}
+          # Проверка файлов перед отправкой
+          ls -la .env docker-compose.yml || exit 1
+
+          # Копирование с явным отключением проверки ключа
+          scp -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              .env docker-compose.yml \
+              ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+
+          # Запуск контейнеров
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }} || { echo 'Directory error'; exit 1; }
             docker-compose down
             docker-compose pull
             docker-compose up -d --build
