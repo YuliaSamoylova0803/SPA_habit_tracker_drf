@@ -33,6 +33,10 @@ poetry shell
 bash
 cp .env.example .env
 Заполните реальными значениями (особенно SECRET_KEY, DB параметры и TELEGRAM_TOKEN).
+NAME=postgres
+USER=postgres
+PASSWORD=postgres
+SECRET_KEY=ваш-secret-key
 
 6. Запуск сервисов
 В разных терминалах:
@@ -131,6 +135,76 @@ poetry run isort .
 bash
 poetry install --without dev
 Это установит только production-зависимости.
+
+## 🚀 Локальный запуск
+1. Клонируйте репозиторий:
+
+bash
+git clone https://github.com/YuliaSamoylova0803/SPA_habit_tracker_drf
+cd habit-tracker
+
+2. Запустите Docker-контейнеры:
+
+bash
+docker-compose up -d --build
+
+3. Примените миграции:
+
+bash
+docker-compose exec backend python manage.py migrate
+
+## 🛠 Настройка сервера
+
+## 🌐 Демо-версия
+Приложение доступно по адресу:  
+🔗 [http://158.160.129.21](http://158.160.129.21)  
+
+Требования:
+Ubuntu 22.04+
+Docker и Docker Compose
+SSH-доступ
+
+### Шаги:
+#### Установите Docker:
+
+bash
+sudo apt update && sudo apt install docker.io docker-compose
+sudo usermod -aG docker $USER
+
+#### Скопируйте проект на сервер:
+
+bash
+scp -r .env docker-compose.yml backend/ nginx/ user@server:/opt/habit-tracker
+
+#### Запустите систему:
+
+bash
+docker-compose up -d --build
+
+## ⚙️ CI/CD (GitHub Actions)
+#### Конфигурация автоматического деплоя:
+
+deploy:
+  steps:
+    - uses: actions/checkout@v3
+    - uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_KEY }}
+    - run: scp -r .env docker-compose.yml backend/ nginx/ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}
+    - run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.DEPLOY_PATH }} && docker-compose up -d --build"
+
+#### Секреты GitHub:
+
+SSH_KEY — приватный ключ для доступа к серверу
+
+DEPLOY_PATH — путь на сервере (/home/yulia/myapp)
+
+## 📦 Зависимости
+- Python 3.13
+- Django 5.0
+- PostgreSQL 14
+- Redis 7
+- Celery 5.3+
 
 ## Документация:
 Дополнительную информацию о структуре проекта доступна по ссылке: http://localhost:8000/swagger/ -  для Swagger UI, http://localhost:8000/redoc/ - для Redoc

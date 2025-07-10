@@ -1,6 +1,7 @@
 import requests
-from config import settings
 from celery.utils.log import get_task_logger
+
+from config import settings
 
 logger = get_task_logger(__name__)
 

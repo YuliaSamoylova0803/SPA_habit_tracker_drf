@@ -1,0 +1,234 @@
+name: Django CI/CD Pipeline with Poetry
+
+on:  # ← Этот раздел должен быть сразу после name
+  push:
+    branches: [main, feature/course_9.0]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: snok/install-poetry@v1
+        with:
+          version: '1.8.2'
+          virtualenvs-create: false
+      - run: poetry lock --no-update
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # 1. Установка Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'  # Рекомендую стабильную версию
+
+      # 2. Установка Poetry (исправленный способ)
+      - name: Install Poetry
+        run: |
+          pip install poetry==1.8.2
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # 3. Настройка Poetry
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.create false
+
+      # 4. Установка зависимостей
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.create true
+          poetry install --no-root --no-interaction
+
+      - name: Apply code formatting
+        run: |
+          poetry run isort .
+          poetry run black .
+
+      - name: Verify formatting
+        run: |
+          git diff --exit-code || (
+            echo "::error::Файлы требуют форматирования. Запустите 'isort . && black .' локально"
+            git diff
+            exit 1
+          )
+
+      - name: Run linting
+        run: |
+          poetry run flake8 .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: false
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction --no-root
+          poetry run pip install psycopg2-binary
+
+      - name: Prepare directories
+        run: |
+          mkdir -p static
+          mkdir -p media
+
+      - name: Run migrations
+        env:
+          NAME: test_db
+          USER: postgres
+          PASSWORD: postgres
+          HOST: localhost
+          PORT: 5432
+          SECRET_KEY: django-insecure-test-key
+        run: |
+          poetry run python manage.py migrate
+
+      - name: Run tests
+        env:
+          NAME: test_db
+          USER: postgres
+          PASSWORD: postgres
+          HOST: localhost
+          PORT: 5432
+          SECRET_KEY: django-insecure-test-key
+          DEBUG: "True"
+        run: |
+          poetry run python manage.py test
+
+  docker-build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:${{ github.sha }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/my_app:latest
+
+  deploy:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Настройка SSH
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      # Создаем .env файл
+      - name: Create .env file
+        run: |
+          cat << EOF > .env
+          NAME=${{ secrets.DB_NAME }}
+          USER=${{ secrets.DB_USER }}
+          PASSWORD=${{ secrets.DB_PASSWORD }}
+          SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          EOF
+
+      # Копируем файлы на сервер
+      - name: Deploy files
+        run: |
+          # Создаем архив со всеми файлами
+          tar czf deploy.tar.gz \
+            Dockerfile \
+            docker-compose.yml \
+            .env \
+            nginx/ \
+            manage.py \
+            pyproject.toml \
+            poetry.lock \
+            config/ \
+            tracking_habits/ \
+            users/
+
+          # Копируем на сервер
+          scp -o StrictHostKeyChecking=no deploy.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.DEPLOY_PATH }}/
+
+          # Распаковываем на сервере
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd ${{ secrets.DEPLOY_PATH }}
+            tar xzf deploy.tar.gz
+            rm deploy.tar.gz
+          "
+
+      # Запускаем сервисы
+      - name: Deploy application
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd ${{ secrets.DEPLOY_PATH }}
+
+            # Принудительно останавливаем все контейнеры
+            docker-compose down || true
+
+            # Убиваем процессы, занимающие порт 8000
+            sudo lsof -ti :8000 | xargs -r sudo kill -9
+
+            # Чистим неиспользуемые ресурсы
+            docker system prune -f
+
+            # Запускаем приложение
+            docker-compose up -d --build
+
+            # Проверяем работу
+            docker-compose ps
+          "

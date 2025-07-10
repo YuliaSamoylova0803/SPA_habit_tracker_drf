@@ -1,12 +1,13 @@
-from rest_framework.reverse import reverse
-from rest_framework.test import APITestCase, APIClient
-from rest_framework import status
-from django.contrib.auth import get_user_model
-from tracking_habits.models import Habit
 from datetime import time, timedelta
-from django.utils import timezone
+
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from datetime import date
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.reverse import reverse
+from rest_framework.test import APIClient, APITestCase
+
+from tracking_habits.models import Habit
 
 User = get_user_model()
 
