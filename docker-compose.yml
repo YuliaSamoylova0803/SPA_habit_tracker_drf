@@ -18,7 +18,7 @@ services:
 
   nginx:
     build:
-      context: .
+      context: ./nginx
       dockerfile: Dockerfile
     ports:
       - "8080:80"
@@ -40,7 +40,9 @@ services:
       - backend_network
 
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
@@ -63,7 +65,9 @@ services:
       - backend_network
 
   celery:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: celery -A config worker --loglevel=info
     env_file: .env
     volumes:
@@ -78,7 +82,9 @@ services:
     restart: unless-stopped
 
   celery_beat:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     volumes:
